@@ -80,26 +80,25 @@ impl Grid {
         Ok(grid)
     }
 
-    pub fn eliminate(self, x: i32, y: i32, value: u8) -> Result<Grid, SudokuError> {
+    pub fn eliminate(mut self, x: i32, y: i32, value: u8) -> Result<Grid, SudokuError> {
         let cell = self.get(x, y).clone();
         match cell {
             Cell::Known(_) => return Ok(self),
             Cell::Options(ref nums) if !nums.contains(&value) => return Ok(self),
             Cell::Options(_) => {}
         }
-        let mut grid = self.clone();
-        let cell = grid.get(x, y).eliminate(value)?;
-        grid.set(x, y, cell.clone());
+        let cell = self.get(x, y).eliminate(value)?;
+        self.set(x, y, cell.clone());
         match cell {
             Cell::Known(num) => {
-                let peers: Vec<(i32, i32)> = grid.peers(x, y).iter().map(|(pos, _)| *pos).collect();
+                let peers: Vec<(i32, i32)> = self.peers(x, y).iter().map(|(pos, _)| *pos).collect();
                 for (i, j) in peers {
-                    grid = grid.eliminate(i, j, num)?;
+                    self = self.eliminate(i, j, num)?;
                 }
             },
             Cell::Options(_) => {}
         }
-        Ok(grid)
+        Ok(self)
     }
 
     pub fn is_solved(&self) -> bool {

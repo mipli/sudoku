@@ -20,7 +20,8 @@ fn search(grid: Grid) -> Result<Grid, SudokuError> {
     }
 
     let (x, y) = grid.get_lowest_pos();
-    match grid.get(x, y) {
+    let cell = grid.get(x, y).clone();
+    match cell {
         Cell::Known(_) => {
             Ok(grid.clone())
         },

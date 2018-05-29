@@ -4,7 +4,7 @@ use super::{Cell, SudokuError};
 
 #[derive(Clone)]
 pub struct Grid {
-    cells: Vec<Cell>
+    cells: Vec<Cell>,
 }
 
 impl Grid {
@@ -80,13 +80,14 @@ impl Grid {
         Ok(grid)
     }
 
-    pub fn eliminate(&self, x: i32, y: i32, value: u8) -> Result<Grid, SudokuError> {
-        let mut grid = self.clone();
-        match self.get(x, y) {
-            Cell::Known(_) => return Ok(grid),
-            Cell::Options(nums) if !nums.contains(&value) => return Ok(grid),
+    pub fn eliminate(self, x: i32, y: i32, value: u8) -> Result<Grid, SudokuError> {
+        let cell = self.get(x, y).clone();
+        match cell {
+            Cell::Known(_) => return Ok(self),
+            Cell::Options(ref nums) if !nums.contains(&value) => return Ok(self),
             Cell::Options(_) => {}
         }
+        let mut grid = self.clone();
         let cell = grid.get(x, y).eliminate(value)?;
         grid.set(x, y, cell.clone());
         match cell {

@@ -1,0 +1,6 @@
+[package]
+name = "sudoku"
+version = "0.1.0"
+authors = ["Michael A. Plikk <michael@aptoma.com>"]
+
+[dependencies]

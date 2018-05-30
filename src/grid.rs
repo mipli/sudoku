@@ -51,8 +51,10 @@ impl Grid {
                 prs.push(((i, y), self.get(i, y)));
             }
         }
-        let x_offset = 3 * ((x as f32) / 3.0).floor() as i32;
-        let y_offset = 3 * ((y as f32) / 3.0).floor() as i32;
+
+        // integer divison has implicit .floor()
+        let x_offset = 3 * (x / 3);
+        let y_offset = 3 * (y / 3);
         for i in 0..3 {
             for j in 0..3 {
                 let nx = i + x_offset;
@@ -201,6 +203,8 @@ impl fmt::Debug for Grid {
 }
 #[cfg(test)]
 mod tests {
+    use test::Bencher;
+
     use Grid;
     use super::{Cell};
 
@@ -216,7 +220,7 @@ mod tests {
         match Grid::from_string("4.....8.5.3..........7......2.....6.....8.4......1.......6.3.7.5..2.....1.4......") {
             Ok(mut grid) => {
                 grid.set(0, 0, Cell::Options(vec![1, 2]));
-                grid = grid.eliminate(0, 0, 1 as u8).unwrap();
+                grid.eliminate(0, 0, 1 as u8).unwrap();
                 match grid.get(0, 0) {
                     Cell::Known(n) => assert_eq!(2 as u8, *n),
                     Cell::Options(_) => assert!(false)
@@ -229,7 +233,7 @@ mod tests {
     #[test]
     fn grid_eliminate_first() {
         let mut grid = Grid::default();
-        grid = grid.eliminate(0, 0, 1 as u8).unwrap();
+        grid.eliminate(0, 0, 1 as u8).unwrap();
         match grid.get(0, 0) {
             Cell::Known(_) => assert!(false),
             Cell::Options(nums) => assert_eq!(*nums, [2, 3, 4, 5, 6, 7, 8, 9])
@@ -294,5 +298,21 @@ mod tests {
             Cell::Known(_) => assert!(false),
             Cell::Options(nums) => assert_eq!(*nums, [1, 2, 3, 4, 6, 7])
         }
+    }
+
+    #[bench]
+    fn bench_grid_assign_row(b: &mut Bencher) {
+        b.iter(|| {
+            let mut grid = Grid::default();
+            grid = grid.assign(0, 0, 8 as u8).unwrap();
+            grid = grid.assign(1, 0, 5 as u8).unwrap();
+            grid = grid.assign(2, 0, 9 as u8).unwrap();
+            grid = grid.assign(3, 0, 6 as u8).unwrap();
+            grid = grid.assign(4, 0, 1 as u8).unwrap();
+            grid = grid.assign(5, 0, 2 as u8).unwrap();
+            grid = grid.assign(6, 0, 4 as u8).unwrap();
+            grid = grid.assign(7, 0, 3 as u8).unwrap();
+            let _ = grid.assign(8, 0, 7 as u8).unwrap();
+        });
     }
 }

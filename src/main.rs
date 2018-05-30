@@ -1,10 +1,20 @@
+#![feature(test)]
+extern crate getopts;
+extern crate test;
+
+use getopts::Options;
+use std::env;
+use std::fs::File;
+use std::io::prelude::*;
+
 mod cell;
 use cell::{Cell};
 
 mod grid;
 use grid::{Grid};
 
-mod solver;
+mod move_solver;
+mod ref_solver;
 
 #[derive(Debug)]
 pub enum SudokuError {
@@ -13,61 +23,99 @@ pub enum SudokuError {
     RemovingKnownValue
 }
 
-fn search(mut grid: Grid) -> Result<Grid, SudokuError> {
-    if !grid.is_valid() {
-        return Err(SudokuError::InvalidGrid);
-    }
-    if grid.is_solved() {
-        return Ok(grid);
-    }
-
-    let (x, y) = grid.get_lowest_pos();
-    let cell = grid.get(x, y).clone();
-    match cell {
-        Cell::Known(_) => {
-            Ok(grid)
-        },
-        Cell::Options(nums) => {
-            let num = nums[0];
-            match try_assign(&grid, x, y, num) {
-                Ok(g) => Ok(g),
-                Err(_) => {
-                    grid.eliminate(x, y, num)?;
-                    search(grid)
-                }
-            }
-        }
-    }
+fn print_usage(program: &str, opts: Options) {
+    let brief = format!("Usage: {} [options] FILE", program);
+    print!("{}", opts.usage(&brief));
 }
 
-fn try_assign(grid: &Grid, x: i32, y: i32, num: u8) -> Result<Grid, SudokuError> {
-    let new_grid = grid.assign(x, y, num)?;
-    search(new_grid)
+fn get_data(file: &str) -> std::io::Result<String> {
+    let mut file = File::open(file)?;
+    let mut sudoku_data = String::new();
+    file.read_to_string(&mut sudoku_data)?;
+    Ok(sudoku_data.to_string())
 }
 
-pub fn solve(data: &str) -> Result<Grid, SudokuError> {
-    let grid = Grid::from_string(data)?;
-    solver::search(grid)
+fn get_batch_data(file: &str) -> std::io::Result<Vec<String>> {
+    let mut file = File::open(file)?;
+    let mut sudoku_data = String::new();
+    file.read_to_string(&mut sudoku_data)?;
+    let lines = sudoku_data.lines().map(|line| line.to_string()).collect::<Vec<String>>();
+    Ok(lines)
+}
+
+fn solve(sudoku_data: &str, ref_mode: bool) -> Result<Grid, SudokuError>{
+    let grid = Grid::from_string(&sudoku_data)?;
+    if ref_mode {
+        ref_solver::search(grid)
+    } else {
+        move_solver::search(grid)
+    }
 }
 
 fn main() {
-    // match solve("85...24..72......9..4.........1.7..23.5...9...4...........8..7..17..........36.4.") {
-    match solve(".....6....59.....82....8....45........3........6..3.54...325..6..................") { // hard
-    // match solve(".....5.8....6.1.43..........1.5........1.6...3.......553.....61........4.........") { // impossible
-        Ok(grid) => println!("Solved:\n{:?}", grid),
-        Err(err) => eprintln!("{:?}", err)
+    let args: Vec<String> = env::args().collect();
+    let program = args[0].clone();
+
+    let mut opts = Options::new();
+    opts.optflag("h", "help", "print this help menu");
+    opts.optflag("b", "batch", "input file contains a batch of puzzles");
+    opts.optflag("r", "ref", "use reference based solver");
+
+    let matches = match opts.parse(&args[1..]) {
+        Ok(m) => { m }
+        Err(f) => { 
+            println!("{}", f.to_string());
+            print_usage(&program, opts);
+            return;
+        }
+    };
+    if matches.opt_present("h") {
+        print_usage(&program, opts);
+        return;
+    }
+    let ref_mode = matches.opt_present("r");
+    let input_file = if !matches.free.is_empty() {
+        matches.free[0].clone()
+    } else {
+        print_usage(&program, opts);
+        return;
+    };
+    if matches.opt_present("b") {
+        match get_batch_data(&input_file) {
+            Ok(sudoku_data) => {
+                for data in &sudoku_data {
+                    match solve(&data, ref_mode) {
+                        Ok(_) => {},
+                        Err(_) => {}
+                    }
+                }
+                println!("Done");
+            }, 
+            Err(_) => { }
+        }
+    } else {
+        match get_data(&input_file) {
+            Ok(sudoku_data) => {
+                match solve(&sudoku_data, ref_mode) {
+                    Ok(grid) => println!("Solved\n{:?}", grid),
+                    Err(err) => eprintln!("Error: {:?}", err),
+                }
+            }, 
+            Err(_) => { }
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{solve};
+    use test::Bencher;
+    use super::{get_data, solve};
 
-    #[test]
-    fn test_solve() {
-        match solve("85...24..72......9..4.........1.7..23.5...9...4...........8..7..17..........36.4.") {
-            Ok(grid) => assert!(grid.is_solved() && grid.is_valid()),
-            Err(_) => assert!(false)
-        }
+    #[bench]
+    fn bench_solve(b: &mut Bencher) {
+        let data = get_data("data/easy").unwrap();
+        b.iter(|| {
+            let _ = solve(&data, true);
+        });
     }
 }

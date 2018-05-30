@@ -50,6 +50,7 @@ impl Cell {
 
 #[cfg(test)]
 mod tests {
+    use test::Bencher;
     use Cell;
 
     #[test]
@@ -70,5 +71,13 @@ mod tests {
             Cell::Known(n) => assert_eq!(n, 1),
             Cell::Options(_) => assert!(false)
         }
+    }
+
+    #[bench]
+    fn bench_cell_eliminate(b: &mut Bencher) {
+        b.iter(|| {
+            let cell = Cell::Options(vec![1,2,3,4]);
+            let _ = cell.eliminate(2).unwrap();
+        });
     }
 }

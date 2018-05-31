@@ -15,13 +15,16 @@ impl Grid {
 
         for c in data.chars() {
             match c.to_digit(10) {
-                Some(v) => {
+                Some(v) if v > 0 => {
                     let x = index % 9;
                     let y = (index as f32 / 9.0).floor() as i32;
-                    grid = match grid.assign(x, y, v as u8) {
+                    grid = match grid.with_assigned(x, y, v as u8) {
                         Ok(g) => g,
                         Err(_) => return Err(SudokuError::InvalidGrid)
                     };
+                    index += 1;
+                },
+                Some(v) if v == 0 => {
                     index += 1;
                 },
                 None if c == '.' => {
@@ -67,7 +70,7 @@ impl Grid {
         prs
     }
 
-    pub fn assign(&self, x: i32, y: i32, value: u8) -> Result<Grid, SudokuError>{
+    pub fn with_assigned(&self, x: i32, y: i32, value: u8) -> Result<Grid, SudokuError>{
         let to_remove: Vec<u8> = match self.get(x, y) {
             Cell::Known(n) if *n == value => vec![],
             Cell::Known(_) => return Err(SudokuError::AssigningToKnownCell),
@@ -274,26 +277,26 @@ mod tests {
     }
 
     #[test]
-    fn grid_assign() {
+    fn grid_with_assigned() {
         let mut grid = Grid::default();
-        grid = grid.assign(0, 0, 4 as u8).unwrap();
+        grid = grid.with_assigned(0, 0, 4 as u8).unwrap();
         match grid.get(0, 1) {
             Cell::Known(_) => assert!(false),
             Cell::Options(nums) => assert_eq!(8, nums.len())
         }
     }
     #[test]
-    fn grid_assign_row() {
+    fn grid_with_assigned_row() {
         let mut grid = Grid::default();
-        grid = grid.assign(0, 0, 8 as u8).unwrap();
-        grid = grid.assign(1, 0, 5 as u8).unwrap();
-        grid = grid.assign(2, 0, 9 as u8).unwrap();
-        grid = grid.assign(3, 0, 6 as u8).unwrap();
-        grid = grid.assign(4, 0, 1 as u8).unwrap();
-        grid = grid.assign(5, 0, 2 as u8).unwrap();
-        grid = grid.assign(6, 0, 4 as u8).unwrap();
-        grid = grid.assign(7, 0, 3 as u8).unwrap();
-        grid = grid.assign(8, 0, 7 as u8).unwrap();
+        grid = grid.with_assigned(0, 0, 8 as u8).unwrap();
+        grid = grid.with_assigned(1, 0, 5 as u8).unwrap();
+        grid = grid.with_assigned(2, 0, 9 as u8).unwrap();
+        grid = grid.with_assigned(3, 0, 6 as u8).unwrap();
+        grid = grid.with_assigned(4, 0, 1 as u8).unwrap();
+        grid = grid.with_assigned(5, 0, 2 as u8).unwrap();
+        grid = grid.with_assigned(6, 0, 4 as u8).unwrap();
+        grid = grid.with_assigned(7, 0, 3 as u8).unwrap();
+        grid = grid.with_assigned(8, 0, 7 as u8).unwrap();
         match grid.get(0, 1) {
             Cell::Known(_) => assert!(false),
             Cell::Options(nums) => assert_eq!(*nums, [1, 2, 3, 4, 6, 7])
@@ -301,18 +304,18 @@ mod tests {
     }
 
     #[bench]
-    fn bench_grid_assign_row(b: &mut Bencher) {
+    fn bench_grid_with_assigned_row(b: &mut Bencher) {
         b.iter(|| {
             let mut grid = Grid::default();
-            grid = grid.assign(0, 0, 8 as u8).unwrap();
-            grid = grid.assign(1, 0, 5 as u8).unwrap();
-            grid = grid.assign(2, 0, 9 as u8).unwrap();
-            grid = grid.assign(3, 0, 6 as u8).unwrap();
-            grid = grid.assign(4, 0, 1 as u8).unwrap();
-            grid = grid.assign(5, 0, 2 as u8).unwrap();
-            grid = grid.assign(6, 0, 4 as u8).unwrap();
-            grid = grid.assign(7, 0, 3 as u8).unwrap();
-            let _ = grid.assign(8, 0, 7 as u8).unwrap();
+            grid = grid.with_assigned(0, 0, 8 as u8).unwrap();
+            grid = grid.with_assigned(1, 0, 5 as u8).unwrap();
+            grid = grid.with_assigned(2, 0, 9 as u8).unwrap();
+            grid = grid.with_assigned(3, 0, 6 as u8).unwrap();
+            grid = grid.with_assigned(4, 0, 1 as u8).unwrap();
+            grid = grid.with_assigned(5, 0, 2 as u8).unwrap();
+            grid = grid.with_assigned(6, 0, 4 as u8).unwrap();
+            grid = grid.with_assigned(7, 0, 3 as u8).unwrap();
+            let _ = grid.with_assigned(8, 0, 7 as u8).unwrap();
         });
     }
 }

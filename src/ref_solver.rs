@@ -28,6 +28,6 @@ pub fn search(mut grid: Grid) -> Result<Grid, SudokuError> {
 }
 
 fn try_assign(grid: &Grid, x: i32, y: i32, num: u8) -> Result<Grid, SudokuError> {
-    let new_grid = grid.assign(x, y, num)?;
+    let new_grid = grid.with_assigned(x, y, num)?;
     search(new_grid)
 }

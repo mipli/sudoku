@@ -30,7 +30,7 @@ impl Grid {
                 None if c == '.' => {
                     index += 1;
                 },
-                None => {}
+                Some(_) | None => {}
             }
         }
         Ok(grid)

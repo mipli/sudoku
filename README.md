@@ -27,14 +27,15 @@ and
 
 For batch reading of multiple sudoku files you need to specify one puzzle per line.
 
-I implemented the solver two ways. One where the grid is passed around using references, and a version where the grid is moved around. The main reason for this was to see how each worked, and to see if there was any performance difference. There does not seem to be any difference in performance at the moment.
+I implemented the solver two ways. One where the grid is passed around using references, and a version where the grid is moved around. The main reason for this was to see how each worked, and to see if there was any performance difference. The reference based solution seems to be about 16% faster.
 
 Biggest slowdown at the moment seem to be caused by the `grid.clone` call done when assigning new values. Removing the `Vec` storage in the cells, and converting to using a bit mask instead should make it possible to get rid of that clone call.
 
 
-Benchmarks run at [da13641](https://github.com/mipli/sudoku/commit/da13641b7cd7b7b05216e25ee69fa598d8e2b407)
+Benchmarks run at [2015acb](https://github.com/mipli/sudoku/commit/2015acb)
 ```
-test cell::tests::bench_cell_eliminate  ... bench:         152 ns/iter (+/- 10)
-test grid::tests::bench_grid_assign_row ... bench:      63,542 ns/iter (+/- 5,287)
-test tests::bench_solve                 ... bench:  19,157,626 ns/iter (+/- 471,592)
+test cell::tests::bench_cell_eliminate         ... bench:         115 ns/iter (+/- 6)
+test grid::tests::bench_grid_with_assigned_row ... bench:      64,296 ns/iter (+/- 4,488)
+test tests::bench_solve_move                   ... bench:  21,243,889 ns/iter (+/- 844,765)
+test tests::bench_solve_ref                    ... bench:  18,349,852 ns/iter (+/- 561,355)
 ````

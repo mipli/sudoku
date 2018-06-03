@@ -1,7 +1,11 @@
 #![feature(test)]
 extern crate test;
 
+use std::fs::File;
+use std::io::prelude::*;
+
 extern crate getopts;
+
 extern crate sudoku;
 
 use getopts::Options;
@@ -11,6 +15,22 @@ fn print_usage(program: &str, opts: Options) {
     let brief = format!("Usage: {} [options] FILE", program);
     print!("{}", opts.usage(&brief));
 }
+
+fn get_data(file: &str) -> std::io::Result<String> {
+    let mut file = File::open(file)?;
+    let mut sudoku_data = String::new();
+    file.read_to_string(&mut sudoku_data)?;
+    Ok(sudoku_data.to_string())
+}
+
+fn get_batch_data(file: &str) -> std::io::Result<Vec<String>> {
+    let mut file = File::open(file)?;
+    let mut sudoku_data = String::new();
+    file.read_to_string(&mut sudoku_data)?;
+    let lines = sudoku_data.lines().map(|line| line.to_string()).collect::<Vec<String>>();
+    Ok(lines)
+}
+
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -41,7 +61,7 @@ fn main() {
         return;
     };
     if matches.opt_present("b") {
-        match sudoku::get_batch_data(&input_file) {
+        match get_batch_data(&input_file) {
             Ok(sudoku_data) => {
                 for data in &sudoku_data {
                     match sudoku::solve(&data, ref_mode) {
@@ -54,7 +74,7 @@ fn main() {
             Err(_) => { }
         }
     } else {
-        match sudoku::get_data(&input_file) {
+        match get_data(&input_file) {
             Ok(sudoku_data) => {
                 match sudoku::solve(&sudoku_data, ref_mode) {
                     Ok(grid) => println!("Solved\n{:?}", grid),
@@ -63,19 +83,5 @@ fn main() {
             }, 
             Err(_) => { }
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use test::Bencher;
-    use sudoku::{get_data, solve};
-
-    #[bench]
-    fn bench_solve(b: &mut Bencher) {
-        let data = get_data("data/easy").unwrap();
-        b.iter(|| {
-            let _ = solve(&data, true);
-        });
     }
 }

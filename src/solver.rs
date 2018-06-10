@@ -9,7 +9,7 @@ pub fn search(mut grid: Grid) -> Result<Grid, SudokuError> {
     }
 
     let (x, y) = grid.get_lowest_pos();
-    let cell = grid.get(x, y).clone();
+    let cell = *grid.get(x, y);
     if cell.is_known() {
         Ok(grid)
     } else {

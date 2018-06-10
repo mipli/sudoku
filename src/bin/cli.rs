@@ -11,7 +11,7 @@ extern crate sudoku;
 use getopts::Options;
 use std::env;
 
-fn print_usage(program: &str, opts: Options) {
+fn print_usage(program: &str, opts: &Options) {
     let brief = format!("Usage: {} [options] FILE", program);
     print!("{}", opts.usage(&brief));
 }
@@ -44,38 +44,35 @@ fn main() {
         Ok(m) => { m }
         Err(f) => { 
             println!("{}", f.to_string());
-            print_usage(&program, opts);
+            print_usage(&program, &opts);
             return;
         }
     };
     if matches.opt_present("h") {
-        print_usage(&program, opts);
+        print_usage(&program, &opts);
         return;
     }
     let input_file = if !matches.free.is_empty() {
         matches.free[0].clone()
     } else {
-        print_usage(&program, opts);
+        print_usage(&program, &opts);
         return;
     };
     if matches.opt_present("b") {
-        match get_batch_data(&input_file) {
-            Ok(sudoku_data) => {
-                for data in &sudoku_data {
-                    match sudoku::solve(&data) {
-                        Ok(_) => {},
-                        Err(_) => {}
-                    }
+        if let Ok(sudoku_data) = get_batch_data(&input_file) {
+            for data in &sudoku_data {
+                println!("\nSolving...");
+                if let Ok(grid) = sudoku::solve(&data) {
+                    println!("{}", grid);
                 }
-                println!("Done");
-            }, 
-            Err(_) => { }
+            }
+            println!("Done");
         }
     } else {
         match get_data(&input_file) {
             Ok(sudoku_data) => {
                 match sudoku::solve(&sudoku_data) {
-                    Ok(grid) => println!("Solved\n{:?}", grid),
+                    Ok(grid) => println!("Solved: {:?}\n{}", grid.is_solved(), grid),
                     Err(err) => eprintln!("Error: {:?}", err),
                 }
             }, 

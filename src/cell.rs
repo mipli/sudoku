@@ -1,15 +1,16 @@
+use std::cmp::Ordering;
 
 bitflags! {
     pub struct Value: u32 {
-        const ONE = 0b000000001;
-        const TWO = 0b000000010;
-        const THREE = 0b000000100;
-        const FOUR = 0b000001000;
-        const FIVE = 0b000010000;
-        const SIX = 0b000100000;
-        const SEVEN = 0b001000000;
-        const EIGHT = 0b010000000;
-        const NINE = 0b100000000;
+        const ONE = 0b0_0000_0001;
+        const TWO = 0b0_0000_0010;
+        const THREE = 0b0_0000_0100;
+        const FOUR = 0b0_0000_1000;
+        const FIVE = 0b0_0001_0000;
+        const SIX = 0b0_0010_0000;
+        const SEVEN = 0b0_0100_0000;
+        const EIGHT = 0b0_1000_0000;
+        const NINE = 0b1_0000_0000;
     }
 }
 
@@ -30,7 +31,24 @@ impl From<u32> for Value {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+impl From<Value> for String {
+    fn from(v: Value) -> String {
+        match v {
+            Value::ONE => "1".to_string(),
+            Value::TWO => "2".to_string(),
+            Value::THREE => "3".to_string(),
+            Value::FOUR => "4".to_string(),
+            Value::FIVE => "5".to_string(),
+            Value::SIX => "6".to_string(),
+            Value::SEVEN => "7".to_string(),
+            Value::EIGHT => "8".to_string(),
+            Value::NINE => "9".to_string(),
+            _ => panic!("Trying to convert invalid value")
+        }
+    }
+}
+
+#[derive(Eq, Copy, Clone, Debug)]
 pub struct Cell {
     pub value: Value,
     count: u8
@@ -42,7 +60,7 @@ impl Cell {
     }
 
     pub fn eliminate(&mut self, value: Value) -> &Self {
-        self.value = self.value ^ value;
+        self.value ^= value;
         self.count -= 1;
         self
     }
@@ -98,5 +116,31 @@ impl Default for Cell {
                 Value::NINE,
             count: 9
         }
+    }
+}
+
+impl PartialOrd for Cell {
+    fn partial_cmp(&self, other: &Cell) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Cell {
+    fn cmp(&self, other: &Cell) -> Ordering {
+        let s = match self.count() {
+            1 => 10,
+            v => v
+        };
+        let o = match other.count() {
+            1 => 10,
+            v => v
+        };
+        s.cmp(&o)
+    }
+}
+
+impl PartialEq for Cell {
+    fn eq(&self, other: &Cell) -> bool {
+        self.value == other.value
     }
 }

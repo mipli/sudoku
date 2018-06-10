@@ -2,9 +2,9 @@ use std::fmt;
 
 use super::{Value, Cell, SudokuError};
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct Grid {
-    cells: Vec<Cell>,
+    cells: [Cell; 81]
 }
 
 impl Grid {
@@ -76,42 +76,46 @@ impl Grid {
             return Err(SudokuError::AssigningToKnownCell)
         }
 
-        println!("cell nums: {:?}", cell.nums());
-        let to_remove: Vec<u32> = cell.nums().iter().filter(|n| *n != &value).map(|n| *n).collect();
-        println!("To remove: {:?}", to_remove);
-        let mut grid = self.clone();
+        let to_remove: Vec<_> = cell.nums().iter().filter(|n| *n != &value).cloned().collect();
+        let mut grid = *self;
         for num in to_remove {
             grid.eliminate(x, y, Value::from(num))?;
         }
         Ok(grid)
     }
 
+
     pub fn eliminate(&mut self, x: i32, y: i32, value: Value) -> Result<(), SudokuError> {
-        let original_cell = self.get(x, y).clone();
-        if original_cell.count() == 1 {
-            println!("cell {:?}, {}, {}", original_cell, x, y);
-            return Ok(());
-        }
-        if !original_cell.value.intersects(value) {
-            return Ok(());
+        {
+            let original_cell = self.get(x, y);
+            if original_cell.is_known() {
+                if original_cell.value != value {
+                    return Ok(());
+                } else {
+                    return Err(SudokuError::RemovingKnownValue)
+                }
+            } else {
+                if !original_cell.value.intersects(value) {
+                    return Ok(());
+                }
+            }
         }
 
-        let mut cell = self.get(x, y).clone();
+        let mut cell = *self.get(x, y);
         cell.eliminate(value);
-        self.set(x, y, cell.clone());
-        if cell.count() == 1 {
+        self.set(x, y, cell);
+        if cell.is_known() {
             let peers: Vec<(i32, i32)> = self.peers(x, y).iter().map(|(pos, _)| *pos).collect();
             for (i, j) in peers {
                 self.eliminate(i, j, cell.value)?;
             }
         }
-        self.set(x, y, cell);
         Ok(())
     }
 
     pub fn is_solved(&self) -> bool {
         self.cells.iter().all(|cell| {
-            cell.count() == 1
+            cell.is_known()
         })
     }
 
@@ -119,7 +123,7 @@ impl Grid {
         for x in 0..9 {
             for y in 0..9 {
                 let cell = self.get(x, y);
-                if cell.count() == 1 {
+                if cell.is_known() {
                     let collision = self.peers(x, y).iter().any(|(_, peer)| {
                         if peer.is_known() {
                             return cell.value.intersects(peer.value);
@@ -130,37 +134,16 @@ impl Grid {
                 }
             }
         }
-        return true;
+        true
     }
 
     pub fn get_lowest_pos(&self) -> (i32, i32) {
-        let test_cell = self.cells.iter().enumerate()
-            .min_by(|a, b| {
-                use std::cmp::Ordering;
-
-                let a_val = match a.1.count() {
-                    1 => 10,
-                    v => v + 10
-                };
-
-                let b_val = match b.1.count() {
-                    1 => 10,
-                    v => v + 10
-                };
-
-                if a_val < b_val {
-                    Ordering::Less
-                } else if b_val < a_val {
-                    Ordering::Greater
-                } else {
-                    Ordering::Equal
-                }
-            });
+        let test_cell = self.cells.iter().enumerate().min_by_key(|a| a.1);
         match test_cell {
             Some((index, _)) => {
-                let x = index % 9;
+                let x = (index % 9) as i32;
                 let y = (index as f32 / 9.0).floor() as i32;
-                (x as i32, y as i32)
+                (x, y)
             },
             None => unreachable!()
         }
@@ -170,7 +153,7 @@ impl Grid {
 impl Default for Grid {
     fn default() -> Grid {
         Grid {
-            cells: vec![Cell::default(); 81]
+            cells: [Cell::default(); 81]
         }
     }
 }
@@ -195,12 +178,47 @@ impl fmt::Debug for Grid {
     }
 }
 
+impl fmt::Display for Grid {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut lines: Vec<String> = vec![];
+        for y in 0..9 {
+            if y > 0 && y % 3 == 0 {
+                lines.push("-".repeat(11));
+            }
+            let mut line: Vec<String> = vec![];
+            for x in 0..9 {
+                if x > 0 && x % 3 == 0 {
+                    line.push("|".to_string());
+                }
+                match self.get(x, y) {
+                    c if c.is_known() => {
+                        line.push(String::from(c.value))
+                    },
+                    _ => {
+                        line.push(".".to_string())
+                    }
+                }
+            }
+            lines.push(line.join(""));
+        }
+        write!(f, "{}", lines.join("\n"))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use test::Bencher;
 
     use Grid;
     use super::{Value, Cell};
+
+    fn create_grid() -> Grid {
+        Grid::from_string("4.....8.5.3..........7......2.....6.....8.4......1.......6.3.7.5..2.....1.4......").unwrap()
+    }
+
+    fn create_solved_grid() -> Grid {
+        Grid::from_string("859612437723854169164379528986147352375268914241593786432981675617425893598736241").unwrap()
+    }
 
     #[test]
     fn grid_peers() {
@@ -238,86 +256,62 @@ mod tests {
 
     #[test]
     fn grid_from_string() {
-        match Grid::from_string("4.....8.5.3..........7......2.....6.....8.4......1.......6.3.7.5..2.....1.4......") {
-            Ok(grid) => {
-                let c00 = grid.get(0, 0);
-                assert_eq!(c00.count(), 1);
-                let c01 = grid.get(0, 1);
-                assert_eq!(c01.count(), 5);
-            },
-            Err(_) => assert!(false)
-        }
+        let grid = create_grid();
+        let c00 = grid.get(0, 0);
+        assert_eq!(c00.count(), 1);
+        let c01 = grid.get(0, 1);
+        assert_eq!(c01.count(), 5);
     }
 
     #[test]
     fn grid_eliminate_one() {
-        match Grid::from_string("4.....8.5.3..........7......2.....6.....8.4......1.......6.3.7.5..2.....1.4......") {
-            Ok(mut grid) => {
-                grid.set(0, 0, Cell::default());
-                grid.eliminate(0, 0, Value::from(1)).unwrap();
-                let cell = grid.get(0, 0);
-                println!("{:?}", cell);
-                assert_eq!(cell.count(), 8);
-            },
-            Err(_) => assert!(false)
-        }
+        let mut grid = create_grid();
+        grid.set(0, 0, Cell::default());
+        grid.eliminate(0, 0, Value::from(1)).unwrap();
+        let cell = grid.get(0, 0);
+        assert_eq!(cell.count(), 8);
     }
 
     #[test]
     fn grid_eliminate_to_known() {
-        match Grid::from_string("4.....8.5.3..........7......2.....6.....8.4......1.......6.3.7.5..2.....1.4......") {
-            Ok(mut grid) => {
-                grid.set(0, 0, Cell::default());
-                grid.eliminate(0, 0, Value::from(1)).unwrap();
-                grid.eliminate(0, 0, Value::from(3)).unwrap();
-                grid.eliminate(0, 0, Value::from(4)).unwrap();
-                grid.eliminate(0, 0, Value::from(5)).unwrap();
-                grid.eliminate(0, 0, Value::from(6)).unwrap();
-                grid.eliminate(0, 0, Value::from(7)).unwrap();
-                grid.eliminate(0, 0, Value::from(8)).unwrap();
-                grid.eliminate(0, 0, Value::from(9)).unwrap();
-                let cell = grid.get(0, 0);
-                println!("{:?}", cell);
-                assert!(cell.is_known());
-                assert!(cell.value.intersects(Value::TWO));
-                assert_eq!(cell.nums(), vec![2]);
-            },
-            Err(_) => assert!(false)
-        }
+        let mut grid = Grid::default();
+        grid.set(0, 0, Cell::default());
+        grid.eliminate(0, 0, Value::from(1)).unwrap();
+        grid.eliminate(0, 0, Value::from(3)).unwrap();
+        grid.eliminate(0, 0, Value::from(4)).unwrap();
+        grid.eliminate(0, 0, Value::from(5)).unwrap();
+        grid.eliminate(0, 0, Value::from(6)).unwrap();
+        grid.eliminate(0, 0, Value::from(7)).unwrap();
+        grid.eliminate(0, 0, Value::from(8)).unwrap();
+        grid.eliminate(0, 0, Value::from(9)).unwrap();
+        let cell = grid.get(0, 0);
+        assert!(cell.is_known());
+        assert!(cell.value.intersects(Value::TWO));
+        assert_eq!(cell.nums(), vec![2]);
     }
 
     #[test]
     fn grid_not_solved() {
-        match Grid::from_string("......8.5.3..........7......2.....6.....8.4......1.......6.3.7.5..2.....1.4......") {
-            Ok(grid) => {
-                assert!(!grid.is_solved());
-            },
-            Err(_) => assert!(false)
-        }
+        let grid = create_grid();
+        assert!(!grid.is_solved());
     }
 
     #[test]
     fn grid_get_lowest() {
-        match Grid::from_string(".................................................................................") {
-            Ok(mut grid) => {
-                grid.eliminate(1, 1, Value::from(1)).unwrap();
-                grid.eliminate(1, 1, Value::from(2)).unwrap();
-                grid.eliminate(1, 1, Value::from(3)).unwrap();
-                grid.eliminate(2, 2, Value::from(1)).unwrap();
-                grid.eliminate(2, 2, Value::from(2)).unwrap();
-                let lowest = grid.get_lowest_pos();
-                assert_eq!(lowest, (1, 1));
-            },
-            Err(_) => assert!(false)
-        }
+        let mut grid = Grid::default();
+        grid.eliminate(1, 1, Value::from(1)).unwrap();
+        grid.eliminate(1, 1, Value::from(2)).unwrap();
+        grid.eliminate(1, 1, Value::from(3)).unwrap();
+        grid.eliminate(2, 2, Value::from(1)).unwrap();
+        grid.eliminate(2, 2, Value::from(2)).unwrap();
+        let lowest = grid.get_lowest_pos();
+        assert_eq!(lowest, (1, 1));
     }
 
     #[test]
     fn grid_solved() {
-        match Grid::from_string("859612437723854169164379528986147352375268914241593786432981675617425893598736241") {
-            Ok(grid) => assert!(grid.is_solved()),
-            Err(_) => assert!(false)
-        }
+        let grid = create_solved_grid();
+        assert!(grid.is_solved());
     }
 
     #[bench]

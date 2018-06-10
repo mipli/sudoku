@@ -62,15 +62,7 @@ mod tests {
     use super::solve;
 
     #[bench]
-    fn bench_solve_ref(b: &mut Bencher) {
-        let data = "85...24..72......9..4.........1.7..23.5...9...4...........8..7..17..........36.4.";
-        b.iter(|| {
-            let _ = solve(&data);
-        });
-    }
-
-    #[bench]
-    fn bench_solve_move(b: &mut Bencher) {
+    fn bench_solve(b: &mut Bencher) {
         let data = "85...24..72......9..4.........1.7..23.5...9...4...........8..7..17..........36.4.";
         b.iter(|| {
             let _ = solve(&data);

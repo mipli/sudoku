@@ -25,14 +25,16 @@
 #![feature(test)]
 extern crate test;
 
+#[macro_use]
+extern crate bitflags;
+
 mod cell;
-use cell::{Cell};
+use cell::{Cell, Value};
 
 mod grid;
 use grid::{Grid};
 
-mod move_solver;
-mod ref_solver;
+mod solver;
 
 #[derive(Debug)]
 pub enum SudokuError {
@@ -44,22 +46,14 @@ pub enum SudokuError {
 /// Solves the sudoku specified in `sudoku_data`. Returns a result with either the solved grid, or
 /// a SudokuError
 ///
-/// `ref_mode` is used to toggle between a solver using references internally in the grid, or one
-/// that moves the grid around to the various scopes where it's needed. Purpose of these two modes
-/// was to find any possible speed differences, and possible design issues with either of them
-///
 /// # Example
 /// ```
 /// # extern crate sudoku;
-/// let grid = sudoku::solve("4.....8.5.3..........7......2.....6.....8.4......1.......6.3.7.5..2.....1.4......", false);
+/// let grid = sudoku::solve("4.....8.5.3..........7......2.....6.....8.4......1.......6.3.7.5..2.....1.4......");
 /// ```
-pub fn solve(sudoku_data: &str, ref_mode: bool) -> Result<Grid, SudokuError>{
+pub fn solve(sudoku_data: &str) -> Result<Grid, SudokuError>{
     let grid = Grid::from_string(&sudoku_data)?;
-    if ref_mode {
-        ref_solver::search(grid)
-    } else {
-        move_solver::search(grid)
-    }
+    solver::search(grid)
 }
 
 #[cfg(test)]
@@ -71,7 +65,7 @@ mod tests {
     fn bench_solve_ref(b: &mut Bencher) {
         let data = "85...24..72......9..4.........1.7..23.5...9...4...........8..7..17..........36.4.";
         b.iter(|| {
-            let _ = solve(&data, true);
+            let _ = solve(&data);
         });
     }
 
@@ -79,7 +73,7 @@ mod tests {
     fn bench_solve_move(b: &mut Bencher) {
         let data = "85...24..72......9..4.........1.7..23.5...9...4...........8..7..17..........36.4.";
         b.iter(|| {
-            let _ = solve(&data, false);
+            let _ = solve(&data);
         });
     }
 }

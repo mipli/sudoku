@@ -39,7 +39,6 @@ fn main() {
     let mut opts = Options::new();
     opts.optflag("h", "help", "print this help menu");
     opts.optflag("b", "batch", "input file contains a batch of puzzles");
-    opts.optflag("r", "ref", "use reference based solver");
 
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => { m }
@@ -53,7 +52,6 @@ fn main() {
         print_usage(&program, opts);
         return;
     }
-    let ref_mode = matches.opt_present("r");
     let input_file = if !matches.free.is_empty() {
         matches.free[0].clone()
     } else {
@@ -64,7 +62,7 @@ fn main() {
         match get_batch_data(&input_file) {
             Ok(sudoku_data) => {
                 for data in &sudoku_data {
-                    match sudoku::solve(&data, ref_mode) {
+                    match sudoku::solve(&data) {
                         Ok(_) => {},
                         Err(_) => {}
                     }
@@ -76,7 +74,7 @@ fn main() {
     } else {
         match get_data(&input_file) {
             Ok(sudoku_data) => {
-                match sudoku::solve(&sudoku_data, ref_mode) {
+                match sudoku::solve(&sudoku_data) {
                     Ok(grid) => println!("Solved\n{:?}", grid),
                     Err(err) => eprintln!("Error: {:?}", err),
                 }

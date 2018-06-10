@@ -1,83 +1,102 @@
-use std::fmt;
-use super::{SudokuError};
 
-#[derive(Clone)]
-pub enum Cell {
-    Known(u8),
-    Options(Vec<u8>)
+bitflags! {
+    pub struct Value: u32 {
+        const ONE = 0b000000001;
+        const TWO = 0b000000010;
+        const THREE = 0b000000100;
+        const FOUR = 0b000001000;
+        const FIVE = 0b000010000;
+        const SIX = 0b000100000;
+        const SEVEN = 0b001000000;
+        const EIGHT = 0b010000000;
+        const NINE = 0b100000000;
+    }
+}
+
+impl From<u32> for Value {
+    fn from(v: u32) -> Value {
+        match v {
+            1 => Value::ONE,
+            2 => Value::TWO,
+            3 => Value::THREE,
+            4 => Value::FOUR,
+            5 => Value::FIVE,
+            6 => Value::SIX,
+            7 => Value::SEVEN,
+            8 => Value::EIGHT,
+            9 => Value::NINE,
+            _ => panic!("Trying to convert number not between 1 and 9")
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct Cell {
+    pub value: Value,
+    count: u8
+}
+
+impl Cell {
+    pub fn is_known(&self) -> bool {
+        self.count == 1
+    }
+
+    pub fn eliminate(&mut self, value: Value) -> &Self {
+        self.value = self.value ^ value;
+        self.count -= 1;
+        self
+    }
+
+    pub fn count(&self) -> u8 {
+        self.count
+    }
+
+    pub fn nums(&self) -> Vec<u32> {
+        let mut nums = vec![];
+        if self.value.intersects(Value::ONE) {
+            nums.push(1);
+        }
+        if self.value.intersects(Value::TWO) {
+            nums.push(2);
+        }
+        if self.value.intersects(Value::THREE) {
+            nums.push(3);
+        }
+        if self.value.intersects(Value::FOUR) {
+            nums.push(4);
+        }
+        if self.value.intersects(Value::FIVE) {
+            nums.push(5);
+        }
+        if self.value.intersects(Value::SIX) {
+            nums.push(6);
+        }
+        if self.value.intersects(Value::SEVEN) {
+            nums.push(7);
+        }
+        if self.value.intersects(Value::EIGHT) {
+            nums.push(8);
+        }
+        if self.value.intersects(Value::NINE) {
+            nums.push(9);
+        }
+        nums
+    }
 }
 
 impl Default for Cell {
     fn default() -> Cell {
-        Cell::Options(vec![1, 2, 3, 4, 5, 6, 7, 8, 9])
-    }
-}
-
-impl fmt::Debug for Cell {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Cell::Known(v) => {
-                write!(f, "{}", v)
-            }, 
-            Cell::Options(v) => {
-                write!(f, "{:?}", v)
-            }
+        Cell {
+            value: Value::ONE |
+                Value::TWO |
+                Value::THREE |
+                Value::FOUR |
+                Value::FIVE |
+                Value::SIX |
+                Value::SEVEN |
+                Value::EIGHT |
+                Value::NINE,
+            count: 9
         }
-    }
-}
-
-impl Cell {
-    pub fn eliminate(&self, num: u8) -> Result<Cell, SudokuError> {
-        match self {
-            Cell::Known(_) => {
-                Err(SudokuError::RemovingKnownValue)
-            },
-            Cell::Options(nums) => {
-                if nums.contains(&num) {
-                    let remains = nums.iter().filter(|n| *n != &num).map(|n| *n).collect::<Vec<u8>>();
-                    if remains.len() == 1 {
-                        Ok(Cell::Known(remains[0]))
-                    } else {
-                        Ok(Cell::Options(remains))
-                    }
-                } else {
-                    Ok(self.clone())
-                }
-            }
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use test::Bencher;
-    use Cell;
-
-    #[test]
-    fn cell_eliminate() {
-        let cell = Cell::Options(vec![1,2,3,4]);
-        let res = cell.eliminate(2).unwrap();
-        match res {
-            Cell::Known(_) => assert!(false),
-            Cell::Options(nums) => assert_eq!(nums, [1, 3, 4])
-        }
-    }
-
-    #[test]
-    fn cell_eliminate_to_known() {
-        let cell = Cell::Options(vec![1,2]);
-        let res = cell.eliminate(2).unwrap();
-        match res {
-            Cell::Known(n) => assert_eq!(n, 1),
-            Cell::Options(_) => assert!(false)
-        }
-    }
-
-    #[bench]
-    fn bench_cell_eliminate(b: &mut Bencher) {
-        b.iter(|| {
-            let cell = Cell::Options(vec![1,2,3,4]);
-            let _ = cell.eliminate(2).unwrap();
-        });
     }
 }

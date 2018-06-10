@@ -9,3 +9,4 @@ path = "src/bin/cli.rs"
 
 [dependencies]
 getopts = "0.2"
+bitflags = "*"
